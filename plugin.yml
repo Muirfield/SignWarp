@@ -1,0 +1,22 @@
+name: SignWarp
+api: 1.10.0
+version: 1.0.0
+load: POSTWORLD
+main: alejandroliu\SignWarp\Main
+author: aliuly
+
+commands:
+  xyz:
+    description: Return x,y,z coordinates
+    usage: "/xyz"
+
+permissions:
+  signwarp.place.sign:
+    default: op
+    description: "Allow user to create warp"
+  signwarp.touch.sign:
+    default: true
+    description: "Allow user to use warp"
+  signwarp.cmd.xyz:
+    default: true
+    description: "Shows current x,y,z coordinates"
