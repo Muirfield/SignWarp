@@ -5,7 +5,7 @@ load: POSTWORLD
 main: aliuly\signwarp\Main
 author: aliuly
 softdepend: [FastTransfer,WorldProtect]
-website: https://github.com/alejandroliu/pocketmine-plugins/tree/master/SignWarp
+website: https://github.com/Muirfield/SignWarp
 
 permissions:
   signwarp.place.sign:
@@ -14,12 +14,6 @@ permissions:
   signwarp.touch.sign:
     default: true
     description: "Allow user to use warp"
-  signwarp.place.transfer.sign:
-    default: op
-    description: "Allow user to create transfer signs"
-  signwarp.touch.transfer.sign:
-    default: true
-    description: "Allow user to use transfer signs"
   signwarp.cmd.xyz:
     default: true
     description: "Shows current x,y,z coordinates"
