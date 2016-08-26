@@ -57,16 +57,30 @@ To teleport between worlds, the sign text should look like:
 	[WORLD]
 	world_name
 	x y z
+	Players:
 
 `world_name` is the target world to teleport to.  `x`, `y`, `z` is the
 target location.  If not specified it defaults to the `spawn` world.
 
-The fourth line of the sign is ignored and can be contain any
-descriptive text.
+If dynamic updates are enabled, the fourth line can contain the text
+`Players:`, which will get updated dynamically with the number of
+players on that world.  Otherwise the ine is  ignored and can be
+contain any descriptive text.
 
 To help identify potential _warp_ targets, the command `xyz` is
 provided.  Entering `/xyz` in-game will display the current
 coordinates of the player.
+
+### config.yml
+
+	---
+	settings:
+	  dynamic-updates: 1
+	...
+
+* dynamic-updates: 1 or 0  
+  If enabled, signs will be updated with the number of players in a
+  particular world.
 
 ### Permission Nodes:
 
@@ -74,20 +88,25 @@ coordinates of the player.
 * signwarp.place.sign - Allow user to create warp signs
 * signwarp.touch.sign - Allow user to use warp signs
 
-TODO
-----
-
-* Add support for MultipleWorlds:
-  * to spawn point
-  * to a specific x,y,z coordinate
-
 Changes
 -------
 
-* 1.1.0 :
-  * Added support for multiple worlds
-  * Added permissions for teleporting
+* 1.1.1 : Bugfix release
+  * Fixed /xyz command.
+* 1.1.0 : Update release
+  * Will not teleport if you are holding a sign.
+  * Prevents blocks to be placed when teleporting.
+  * Use ManyWorlds teleport functionality when available.
+  * Added dynamic sign updates.
 * 1.0.0 : First release
+
+FAQ
+---
+
+* Q: How do I create additional worlds?
+* You can use a plugin like `ManyWorlds` or modify the `worlds` secion
+  in your `pocketmine.yml` file.
+
 
 Copyright
 =========

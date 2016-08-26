@@ -4,7 +4,6 @@ namespace alejandroliu\SignWarp;
 
 use pocketmine\plugin\PluginBase;
 use pocketmine\event\Listener;
-use pocketmine\Server;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\event\player\PlayerInteractEvent;
@@ -12,12 +11,9 @@ use pocketmine\math\Vector3;
 use pocketmine\tile\Sign;
 use pocketmine\event\block\SignChangeEvent;
 /** Not currently used but may be later used  */
-use pocketmine\level\Position;
-use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockPlaceEvent;
-use pocketmine\event\block\BlockBreakEvent;
-use pocketmine\item\Item;
-use pocketmine\tile\Tile;
+use pocketmine\utils\Config;
+
 use pocketmine\Player;
 
 class Main extends PluginBase implements Listener {
@@ -29,7 +25,7 @@ class Main extends PluginBase implements Listener {
   const SHORT_WARP = "[SWARP]";
   const LONG_WARP = "[WORLD]";
 
-  //** private $api, $server, $path;
+  protected $teleporters = [];
 
   private function check_coords($line,array &$vec) {
     $mv = array();
@@ -38,16 +34,24 @@ class Main extends PluginBase implements Listener {
 
     list($line,$x,$y,$z) = $mv;
 
-    //$this->getLogger()->info("x=$x y=$y z=$z");
-
     if ($x <= self::MIN_COORD || $z <= self::MIN_COORD) return false;
     if ($x >= self::MAX_COORD || $z >= self::MAX_COORD) return false;
     if ($y <= self::MIN_HEIGHT || $y >= self::MAX_HEIGHT) return false;
     $vec = [$x,$y,$z];
     return true;
   }
+
   public function onEnable(){
+    @mkdir($this->getDataFolder());
+    $cfg = (new Config($this->getDataFolder()."config.yml",
+		       Config::YAML,["settings"=>["dynamic-updates" => 1]]))->getAll();
     $this->getServer()->getPluginManager()->registerEvents($this, $this);
+    if ($cfg["settings"]["dynamic-updates"]) {
+      $this->getLogger()->info("dynamic-updates: ON");
+      $this->getServer()->getScheduler()->scheduleRepeatingTask(new UpdateTimer($this),30);
+    } else {
+      $this->getLogger()->info("dynamic-updates: OFF");
+    }
   }
 
   private function shortWarp(PlayerInteractEvent $event,$sign){
@@ -65,9 +69,10 @@ class Main extends PluginBase implements Listener {
       return;
     }
     list($x,$y,$z) = $mv;
+    $this->teleporters[$event->getPlayer()->getName()] = time();
     $event->getPlayer()->sendMessage("Warping to $x,$y,$z...");
     $event->getPlayer()->teleport(new Vector3($x,$y,$z));
-    Server::getInstance()->broadcastMessage($event->getPlayer()->getName()." teleported!");
+    $this->getServer()->broadcastMessage($event->getPlayer()->getName()." teleported!");
   }
   private function longWarp(PlayerInteractEvent $event,$sign){
     if(empty($sign[1])){
@@ -98,11 +103,26 @@ class Main extends PluginBase implements Listener {
       $mv = null;
     }
     $event->getPlayer()->sendMessage("Teleporting...");
-    $world = $this->getServer()->getLevelByName($level);
-    $event->getPlayer()->teleport($world->getSafeSpawn($mv));
+
+    $this->teleporters[$event->getPlayer()->getName()] = time();
+
+    if (($mw = $this->getServer()->getPluginManager()->getPlugin("ManyWorlds"))
+	!= null) {
+      // Using ManyWorlds for teleporting...
+      $mw->teleport($event->getPlayer(),$level,$mv);
+    } else {
+      $world = $this->getServer()->getLevelByName($level);
+      $event->getPlayer()->teleport($world->getSafeSpawn($mv));
+    }
     $this->getServer()->broadcastMessage($event->getPlayer()->getName()." teleported to $level");
   }
 
+  public function onBlockPlace(BlockPlaceEvent $event){
+    $name = $event->getPlayer()->getName();
+    if (isset($this->teleporters[$name])) {
+      if (time() - $this->teleporters[$name] < 2) $event->setCancelled();
+    }
+  }
   public function playerBlockTouch(PlayerInteractEvent $event){
     if($event->getBlock()->getID() == 323 || $event->getBlock()->getID() == 63 || $event->getBlock()->getID() == 68){
       $sign = $event->getPlayer()->getLevel()->getTile($event->getBlock());
@@ -110,6 +130,16 @@ class Main extends PluginBase implements Listener {
 	return;
       }
       $sign = $sign->getText();
+
+      // Check if the user is holding a sign and prevent teleports
+      if ($event->getItem()->getID() == 323) {
+	if ($sign[0] == self::SHORT_WARP || $sign[0] == self::LONG_WARP) {
+	  $event->getPlayer()->sendMessage("Can not teleport while holding a sign!");
+	  return;
+	}
+
+	return;
+      }
       if($sign[0]== self::SHORT_WARP){
 	$this->shortWarp($event,$sign);
       } elseif ($sign[0]== self::LONG_WARP){
@@ -160,6 +190,25 @@ class Main extends PluginBase implements Listener {
       }
     }
     return true;
+  }
+
+  public function updateSigns() {
+    foreach ($this->getServer()->getLevels() as $lv) {
+      foreach ($lv->getTiles() as $tile) {
+	if (!($tile instanceof Sign)) continue;
+	$sign = $tile->getText();
+	if ($sign[0] != self::LONG_WARP) continue;
+	if (!preg_match('/^Players:/',$sign[3])) continue;
+	if ($this->getServer()->isLevelLoaded($sign[1])) {
+	  $cnt = count($this->getServer()->getLevelByName($sign[1])->getPlayers());
+	  $upd = "Players:$cnt";
+	} else {
+	  $upd = "Players:N/A";
+	}
+	if ($upd == $sign[3]) continue;
+	$tile->setText($sign[0],$sign[1],$sign[2],$upd);
+      }
+    }
   }
 
   public function onCommand(CommandSender $sender,Command $cmd,$label, array $args) {
