@@ -4,7 +4,7 @@
 
 * Summary: Warp between places using signs
 * Dependency Plugins: n/a
-* PocketMine-MP version: 1.4 (API:1.10.0), 1.5 (API:1.12.0)
+* PocketMine-MP version: 1.4 (API:1.10.0), 1.5 (API:1.12.0), 1.6+php7 (API:2.0.0)
 * OptionalPlugins: FastTransfer
 * Categories: Teleportation
 * Plugin Access: Other Plugins, Commands, Tile Entities, Manages worlds
@@ -15,22 +15,22 @@
 <!-- php: $v_forum_thread = "http://forums.pocketmine.net/threads/signwarp.7276/"; -->
 <!-- template: prologue.md -->
 
-**DO NOT POST QUESTION/BUG-REPORTS/REQUESTS IN THE REVIEWS**
+**DO NOT POST QUESTIONS/BUG-REPORTS/REQUESTS IN THE REVIEWS**
 
 It is difficult to carry a conversation in the reviews.  If you
 have a question/bug-report/request please use the
 [Thread](http://forums.pocketmine.net/threads/signwarp.7276/) for
 that.  You are more likely to get a response and help that way.
 
-**NOTE:**
+_NOTE:_
 
-This documentation was last updated for version **1.5.1**.
+This documentation was last updated for version **1.6.0**.
 
 Please go to
 [github](https://github.com/alejandroliu/pocketmine-plugins/tree/master/SignWarp)
 for the most up-to-date documentation.
 
-You can also download this plugin from this [page](https://github.com/alejandroliu/pocketmine-plugins/releases/tag/SignWarp-1.5.1).
+You can also download this plugin from this [page](https://github.com/alejandroliu/pocketmine-plugins/releases/tag/SignWarp-1.6.0).
 
 <!-- template-end -->
 
@@ -143,6 +143,7 @@ The following sections are defined:
 
 # Changes
 
+* 1.6.0: Updated to API 2.0.0
 * 1.5.1: bug-fix
   * Removed a nasty crash in BreakSign
 * 1.5.0:
@@ -207,3 +208,59 @@ Copyright
 128 70 128
 X:-100 Y:69 Z:1072
 
+
+<!-- template: startup.md -->
+<!-- end-include -->
+<img id="ZipPlugin-icon.png" src="https://raw.githubusercontent.com/Muirfield/ZipPluginLoader/master/media/ZipPlugin-icon.png" style="width:64px;height:64px" width="64" height="64"/>
+<!-- php: $v_forum_thread = "http://forums.pocketmine.net/threads/zippluginloader.8924"; -->
+<!-- php: $copyright="2016"; -->
+<!-- meta: Categories = Developer Tools -->
+<!-- template: header.md -->
+<!-- end-include -->
+
+<!-- template: prologue.md -->
+<!-- end-include -->
+
+**NOTE: This is unlike _DevTools_, as it is focus on only loading Zip files
+instead of folders like _DevTools_.**  You still need _DevTools_ if
+you actually want to do Plugin Development and to create _phar_ file
+plugins.
+
+This plugin let's you load plugins from zip files.  This is
+particularly handy when trying out source plugins from
+[GitHub](http://github.com) as you can click the **Download ZIP**
+button, as you can then place the zip file in the plugins folder.
+
+Essentially you put your plugin code in a zip file, and this plugin
+will look for a **plugin.yml** file in there and load the plugin.
+
+If there are multiple plugins in a zip file, all the plugins will be
+loaded by default.  You can control what plugins will be loaded by
+creating a control file.  For example if you have a:
+
+	example.zip
+
+You need to create a text file called:
+
+	example.ctl
+
+In this file you list (one plugin per line) the plugins that you want
+to load.  Any plugins **not** in listed the control file will **not** be
+loaded.
+
+## Changes
+
+* 1.2.1: Updated to newest API
+* 1.1.3: Bug-fix
+  - Fixed bug reported by (@Taha_The_Hacker)
+* 1.1.2: Minor update
+  * Displays a warning whenever a PHAR file is found.
+* 1.1.1: Bug-fix
+  - Fixed some reload related bugs.
+* 1.1.0: Multiple plugins
+  * Change the way error reporting is done...
+  * Supports for multiple plugins in a zip file.
+* 1.0.0: First release
+
+<!-- template: license/gpl2.md -->
+<!-- end-include -->
