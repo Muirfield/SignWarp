@@ -4,7 +4,7 @@ SignWarp
 * Summary: Warp between places using signs
 * Dependency Plugins: n/a
 * PocketMine-MP version: 1.4 - API 1.10.0
-* OptionalPlugins: ManyWorlds
+* OptionalPlugins: ManyWorlds, FastTransfer
 * Categories: Teleportation
 * Plugin Access: Commands, Tile Entities, Items/Blocks
 * WebSite: [github](https://github.com/alejandroliu/pocketmine-plugins/tree/master/SignWarp)
@@ -32,6 +32,15 @@ Or for a warp between worlds:
 
 Where `world_name` is the world to warp to, and *optionally* the
 `x`, `y` and `z` warp location.
+
+For Warp between servers use:
+
+	[TRANSFER]
+	server-address
+	port
+
+You need the **FastTransfer** plugin for this to work.
+
 
 Documentation
 -------------
@@ -71,13 +80,27 @@ To help identify potential _warp_ targets, the command `xyz` is
 provided.  Entering `/xyz` in-game will display the current
 coordinates of the player.
 
+For Warp between servers use:
+
+	[TRANSFER]
+	server-address
+	port
+
+The `port` is optional, and would default to `19132` (the default for
+Minecraft PE servers).  If you do not need to specify a port, then you
+can add some descriptive text instead.  The last line is ignored and
+can be used for description.
+
+You need the **FastTransfer** plugin for this to work.
+
 ### config.yml
 
 	---
 	# Example config.yml
 	settings:
-	  dynamic-updates: 1
-	  broadcast-tp: 1
+	  dynamic-updates: true
+	  broadcast-tp: true
+	  xyz.cmd: true
 	text:
 	  world:
 	  - '[WORLD]'
@@ -86,20 +109,26 @@ coordinates of the player.
 	  - '[WARP]'
 	  - '[SWARP]'
 	  - '[TELEPORT]'
+	  transfer:
+	  - '[TRANSFER]'
 	  players:
 	  - 'Players:'
 	  - 'Jugadores:'
 	...
 
-* dynamic-updates: 1 or 0  
+* dynamic-updates: 1 or 0, true or false  
   If enabled, signs will be updated with the number of players in a
   particular world.
-* broadcast-tp: 1 or 0  
+* broadcast-tp: 1 or 0, true or false  
   If enabled, teleports will be broadcast to all players.
+* xyz.cmd: 1 or 0, true or false  
+  If enabled, the `xyz` command will be available.
 * world:  
   List of texts to use for `[WORLD]` teleport signs.
 * warp:  
   List of texts to use for `[SWARP]` teleport signs.
+* transfer:  
+  List of texts to use for Transfer signs.
 * players:  
   List of texts to use for the `Players:` counters.
 
@@ -107,11 +136,22 @@ coordinates of the player.
 
 * signwarp.cmd.xyz - Allows the user to show current x,y,z coordinates
 * signwarp.place.sign - Allow user to create warp signs
+* signwarp.place.transfer.sign - Allow user to create transfer signs
 * signwarp.touch.sign - Allow user to use warp signs
+* signwarp.touch.transfer.sign - Allow user to use transfer signs
+
 
 Changes
 -------
 
+* 1.3.2: CallbackTask
+  * Removed CallbackTask deprecation warnings
+* 1.3.1: FastTransfer
+  * removed onLoad... All initialization happens onEnable
+  * FastTransfer support
+* 1.3.0: Re-write
+  * /xyz can now be disabled
+  * cleaned up the code
 * 1.2.2: Bug fixes
   * Fixed errors reported by [Crash Archive](http://crash.pocketmine.net/)
 * 1.2.1 : Minor updates
