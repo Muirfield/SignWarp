@@ -10,64 +10,43 @@
 <!-- template: prologue.md -->
 <!-- end-include -->
 
-## Overview
+## Documentation
 
-<!-- template: prologue.md -->
-<!-- template-end -->
+A Plugin implementing simple _Sign_ based teleports.
 
-A Plugin implementing simple _Sign_ based warps.
+To activate a _teleport_ the player must touch a sign.  That will
+teleport the player to the new location described by the sign.
 
 Basic Usage:
 
 Place a Sign with the following text:
 
-	[SWARP]
+	[POS]
 	x y z
 
-Where `x`, `y` and `z` are numbers containing the target warp
+Where `x`, `y` and `z` are numbers containing the teleport target
 coordinates.
 
-Or for a warp between worlds:
-
-	[WORLD]
-	world_name
-	x y z
-
-Where `world_name` is the world to warp to, and *optionally* the
-`x`, `y` and `z` warp location.
-
-## Documentation
-
-This plugin implements _warps_ through the placement of _signs_.  You
-need to create a sign with the text:
-
-	[SWARP]
-	x y z
-
-`x`, `y` and `z` are integers containing the target coordinates for
-this warp.
-
-To activate a _warp_ the player must touch a sign.  That will teleport
-the player to the new location described by the `x`, `y`, `z`
-coordinates.
-
-The third and four lines of the sign are ignored and can be used to
-describe the _warp_.
-
-To teleport between worlds, the sign text should look like:
+To teleport between worlds:
 
 	[WORLD]
 	world_name
 	x y z
 	Players:
 
-`world_name` is the target world to teleport to.  `x`, `y`, `z` is the
-target location.  If not specified it defaults to the `spawn` world.
+Where `world_name` is the world to teleport to, and *optionally* the
+`x`, `y` and `z` teleport location.  If not specified it defaults to
+the world's `spawn` location.
 
 If dynamic updates are enabled, the fourth line can contain the text
 `Players:`, which will get updated dynamically with the number of
-players on that world.  Otherwise the ine is  ignored and can
+players on that world.  Otherwise the line is ignored and can
 contain any descriptive text.
+
+To teleport to warp points:
+
+	[WARP]
+	warp_name
 
 To help identify potential _warp_ targets, the command `xyz` is
 provided.  Entering `/xyz` in-game will display the current
@@ -83,12 +62,6 @@ The following sections are defined:
 *  settings: configurable variables
  *  dynamic updates: Signs will be udpated with the number of players in a world
  *  xyz.cmd: If true, the **xyz** command will be available
-*  text: Text displayed on the different signs
- *  transfer: Fast transfer signs
- *  world: World teleport signs
- *  warp: Local world teleport signs
- *  players: Text to use when displaying player counts
-
 
 ### Permission Nodes
 
@@ -102,8 +75,11 @@ The following sections are defined:
 
 # Changes
 
-* 1.6.0: 
+* 2.0.0: 
   * Updated to API 2.0.0
+  * Added more [libcommon](http://github.com/Muirfield/libcommon).
+  * Added Warps
+  * Sign text configuration rolled into translation.
   * Removed FastTransfer
 * 1.5.1:
   * Removed a nasty crash in BreakSign

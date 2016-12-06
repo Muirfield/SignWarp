@@ -1,10 +1,10 @@
 name: SignWarp
-api: [1.10.0,1.12.0,2.0.0]
-version: 1.6.0
+api: 2.1.0
+version: 2.0.0
 load: POSTWORLD
 main: aliuly\signwarp\Main
 author: aliuly
-softdepend: [FastTransfer,WorldProtect]
+softdepend: [WorldProtect]
 website: https://github.com/Muirfield/SignWarp
 
 permissions:

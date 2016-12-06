@@ -12,7 +12,9 @@ use pocketmine\utils\Config;
 use mf\common\mc;
 use mf\common\Cmd;
 use mf\common\PluginCallbackTask;
-
+use mf\common\TPU;
+use mf\common\Warps;
+use mf\common\Perms;
 
 //use pocketmine\command\PluginCommand;
 //use pocketmine\command\Command;
@@ -34,14 +36,12 @@ use mf\common\PluginCallbackTask;
 //use aliuly\signwarp\common\MPMU;
 
 class Main extends PluginBase implements Listener {
-  const MAX_COORD = 30000000;
-  const MIN_COORD = -30000000;
   const MAX_HEIGHT = 128;
   const MIN_HEIGHT = 0;
 
   protected $teleporters;
-  protected $text;
   protected $wp;
+  protected $warps;
 
   public function onEnable(){
     mc::init($this,$this->getFile());
@@ -61,32 +61,13 @@ class Main extends PluginBase implements Listener {
 	 "# settings" => "configurable variables",
 	 "settings" => [
 	   "# dynamic updates" => "Signs will be udpated with the number of players in a world",
-	   "dynamic-updates" => true,
+	   "dynamic-updates" => TRUE,
 	   "# xyz.cmd" => "If true, the **xyz** command will be available",
-	   "xyz.cmd" => true,
+	   "xyz.cmd" => FALSE,
 	 ],
-	 "# text" => "Text displayed on the different signs",
-	 "text" => [
-	   "# world" => "World teleport signs",
-	   "world" => [ "[WORLD]" ],
-	   "# warp" => "Local world teleport signs",
-	   "warp" => [ "[WARP]", "[SWARP]" ],
-	   "# players" => "Text to use when displaying player counts",
-	   "players" => [ "Players:" ],
-	 ]
        ];
 
     $cfg = (new Config($this->getDataFolder()."config.yml",Config::YAML,$defaults))->getAll();
-
-    $this->text = [ "sign" => [] ];
-    foreach (["world","warp"] as $n) {
-      $thist->text[$n] = [];
-      foreach ($cfg["text"][$n] as $m) {
-	$this->text[$n][$m] = $m;
-	$this->text["sign"][$m] = $m;
-      }
-    }
-    $this->text["players"] = $cfg["text"]["players"];
 
     if ($cfg["settings"]["xyz.cmd"]) {
       Cmd::add($this, $this, "xyz", [
@@ -103,6 +84,8 @@ class Main extends PluginBase implements Listener {
       $this->getLogger()->info(TextFormat::YELLOW.mc::_("dynamic-updates: OFF"));
     }
     $this->getServer()->getPluginManager()->registerEvents($this, $this);
+    $this->warps = Warps::init($this);
+    $this->warps->load();
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -111,50 +94,61 @@ class Main extends PluginBase implements Listener {
   //
   //////////////////////////////////////////////////////////////////////
   private function checkSign(Player $pl,array $sign) {
-    if (isset($this->text["warp"][$sign[0]])) {
-      // Short warp...
+    if ($sign[0] == mc::_("[POS]")) {
+      // Local teleport...
       if (empty($sign[1])) {
 	$pl->sendMessage(mc::_("[SignWarp] No coordinates specified"));
-	return null;
+	return NULL;
       }
       $mv = [];
-      if ($this->check_coords($sign[1],$mv) !== true) {
+      if ($this->check_coords($sign[1],$mv) !== TRUE) {
 	$pl->sendMessage(mc::_("[SignWarp] Invalid coordinates %1%",$sign[1]));
-	return null;
+	return NULL;
       }
       return new Position($mv[0],$mv[1],$mv[2],$pl->getLevel());
     }
-    // Long warp!
-    if (isset($this->text["world"][$sign[0]])) {
+    // Long teleport!
+    if ($sign[0] == mc::_("[WORLD]")) {
       if (empty($sign[1])) {
 	$pl->sendMessage(mc::_("[SignWarp] No World specified"));
-	return null;
+	return NULL;
       }
       // Check level...
-      if (!$this->getServer()->isLevelGenerated($sign[1])) {
-	$pl->sendMessage(mc::_("[SignWarp] World \"%1%\" does not exist!",$sign[1]));
-	return null;
+      list ($l,$err) = TPU::getLevelByName($this->getServer(), $sign[1]);
+      if ($l === NULL) {
+	$pl->sendMessage(mc::_("[SignWarp] %1", $err));
+	return NULL;
       }
-      if (!$this->getServer()->isLevelLoaded($sign[1])) {
-	$pl->sendMessage(mc::_("[SignWarp] Loading \"%1%\"",$sign[1]));
-	if (!$this->getServer()->loadLevel($sign[1])) {
-	  $pl->sendMessage(mc::_("[SignWarp] Unable to load world \"%1%\"",$sign[1]));
-	  return null;
-	}
-      }
-      $l = $this->getServer()->getLevelByName($sign[1]);
-      if ($l == null) {
-	$pl->sendMessage(mc::_("[SignWarp] Error loading \"%1%\"",$sign[1]));
-	return null;
-      }
-
       $mv = [];
       if ($this->check_coords($sign[2],$mv)) {
 	$mv = new Vector3($mv[0],$mv[1],$mv[2]);
       } else {
-	$mv = null;
+	$mv = NULL;
       }
       return $pos = $l->getSafeSpawn($mv);
+    }
+    // Long teleport!
+    if ($sign[0] == mc::_("[WARP]")) {
+      if (empty($sign[1])) {
+	$pl->sendMessage(mc::_("[SignWarp] No Warp specified"));
+	return NULL;
+      }
+      // Check warp...
+      list($place,$perm) = $this->warps->get($sign[1]);
+      if ($place == NULL) {
+	$pl->sendMessage(mc::_("[SignWarp] Warp \"%1%\" not found!", $sign[1]));
+	return NULL;
+      }
+      if ($perm != NULL && !Perms::access($pl, $perm)) return NULL;
+      
+      list ($x,$y,$z,$world) = $place;
+      // Check level...
+      list ($l,$err) = TPU::getLevelByName($this->getServer(), $world);
+      if ($l === NULL) {
+	$pl->sendMessage(mc::_("[SignWarp] %1", $err));
+	return NULL;
+      }
+      return new Position($x,$y,$z,$l);
     }
     $pl->sendMessage(mc::_("[SignWarp] INTERNAL ERROR"));
     return null;
@@ -168,27 +162,28 @@ class Main extends PluginBase implements Listener {
   public function breakSign(Player $pl,Sign $tile,$msg = "") {
     if ($msg != "") $pl->sendMessage($msg);
     $this->getServer()->getScheduler()->scheduleDelayedTask(
-		    new PluginCallbackTask($this,[$this,"doBreakSign"],[$tile]),10
+      new PluginCallbackTask($this,[$this,"doBreakSign"],[$tile]),10
     );
   }
   private function check_coords($line,array &$vec) {
     $mv = array();
     if (!preg_match('/^\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s*$/',$line,$mv)) {
-	    return false;
+      return FALSE;
     }
     list($line,$x,$y,$z) = $mv;
-    if ($x <= self::MIN_COORD || $z <= self::MIN_COORD) return false;
-    if ($x >= self::MAX_COORD || $z >= self::MAX_COORD) return false;
-    if ($y <= self::MIN_HEIGHT || $y >= self::MAX_HEIGHT) return false;
+    if ($y <= self::MIN_HEIGHT || $y >= self::MAX_HEIGHT) return FALSE;
     $vec = [$x,$y,$z];
-    return true;
+    return TRUE;
   }
   private function matchCounter($txt) {
-    foreach ($this->text["players"] as $t) {
-      if (substr($txt,0,strlen($t)) == $t) return $t;
-    }
-    return false;
+    $t = mc::_("Players:");
+    if (substr($txt,0,strlen($t)) == $t) return $t;
+    return FALSE;
   }
+  private function isTpSign($txt) {
+    return ($txt == mc::_("[POS]") || $txt == mc::_("[WORLD]") || $txt == mc::_("[WARP]"));
+  }
+
   //////////////////////////////////////////////////////////////////////
   //
   // Internal command
@@ -197,18 +192,15 @@ class Main extends PluginBase implements Listener {
   public function onCommand(CommandSender $sender,Command $cmd,$label, array $args) {
     switch ($cmd->getName()) {
       case "xyz":
-	if ($sender instanceof Player) {
-	  $pos = $sender->getPosition();
-	  $sender->sendMessage(mc::_("You are at %1%,%2%,%3%",
+	if (!Perms::inGame($sender)) return TRUE;
+	$pos = $sender->getPosition();
+	$sender->sendMessage(mc::_("You are at %1%,%2%,%3%",
 				      intval($pos->getX()),
 				      intval($pos->getY()),
 				      intval($pos->getZ())));
-	} else {
-	  $sender->sendMessage(TextFormat::RED.mc::_("[SignWarp] This command may only be used in-game"));
-	}
-	return true;
+	return TRUE;
     }
-    return false;
+    return FALSE;
   }
   //////////////////////////////////////////////////////////////////////
   //
@@ -237,7 +229,8 @@ class Main extends PluginBase implements Listener {
     if(!($tile instanceof Sign))return;
     $sign = $event->getLines();
 
-    if (!isset($this->text["sign"][$sign[0]])) return;
+    if (!$this->isTpSign($sign[0])) return;
+
     if(!$pl->hasPermission("signwarp.place.sign")) {
       $this->breakSign($pl,$tile,mc::_("You are not allowed to make Warp signs"));
       return;
@@ -249,17 +242,20 @@ class Main extends PluginBase implements Listener {
       return;
     }
     if ($pos instanceof Position) {
-      $this->getServer()->broadcastMessage(
-	isset($this->text["world"][$sign[0]]) ?
-	mc::_("[SignWarp] Portal to %1% created by %2%",
-		$pos->getLevel()->getName(),$pl->getName()) :
-	mc::_("[SignWarp] Warp to %1%,%2%,%3% created by %4%",
-		$pos->getX(),$pos->getY(),$pos->getZ(),
-		$pl->getName()));
-    } else {
-      $this->getServer()->broadcastMessage(
-	      mc::_("[SignWarp] Transfer portal %1% created by %2%",
-			      implode(":",$pos), $pl->getName()));
+      if ($sign[0] == mc::_("[WORLD]")) {
+	$this->getServer()->broadcastMessage(
+	      mc::_("[SignWarp] World Portal to %1% created by %2%",
+		    $pos->getLevel()->getName(),$pl->getName()));
+      } elseif ($sign[0] == mc::_("[POS]")) {
+	$this->getServer()->broadcastMessage(
+	      mc::_("[SignWarp] Portal to %1%,%2%,%3% created by %4%",
+		      $pos->getX(),$pos->getY(),$pos->getZ(),
+		      $pl->getName()));
+      } elseif ($sign[0] == mc::_("[WARP]")) {
+	$this->getServer()->broadcastMessage(
+	      mc::_("[SignWarp] Warp Portal to %1% created by %2%",
+		      $sign[1],$pl->getName()));
+      }
     }
   }
   public function playerTouchIt(PlayerInteractEvent $event){
@@ -269,7 +265,7 @@ class Main extends PluginBase implements Listener {
     $sign = $pl->getLevel()->getTile($event->getBlock());
     if(!($sign instanceof Sign)) return;
     $sign = $sign->getText();
-    if (!isset($this->text["sign"][$sign[0]])) return;
+    if (!$this->isTpSign($sign[0])) return;
 
     if(!$pl->hasPermission("signwarp.touch.sign")) {
       $pl->sendMessage(mc::_("Nothing happens..."));
@@ -281,7 +277,7 @@ class Main extends PluginBase implements Listener {
       return;
     }
     $pos = $this->checkSign($pl,$sign);
-    if ($pos === null) return;
+    if ($pos === NULL) return;
 
     if ($pos instanceof Position) {
       $this->teleporters[$pl->getName()] = time();
@@ -297,18 +293,16 @@ class Main extends PluginBase implements Listener {
   //
   //////////////////////////////////////////////////////////////////////
   public function updateSigns() {
-    $wp = $this->getServer()->getPluginManager()->getPlugin("WorldProtect");
     foreach ($this->getServer()->getLevels() as $lv) {
       foreach ($lv->getTiles() as $tile) {
 	if (!($tile instanceof Sign)) continue;
 	$sign = $tile->getText();
-	if(!in_array($sign[0],$this->text["world"])) continue;
-
+	if($sign[0] != mc::_("[WORLD]")) continue;
 	if (!($t = $this->matchCounter($sign[3]))) continue;
-	if (($lv = $this->getServer()->getLevelByName($sign[1])) !== null) {
+	if (($lv = $this->getServer()->getLevelByName($sign[1])) !== NULL) {
 	  $cnt = count($lv->getPlayers());
-	  $max = null;
-	  if ($wp !== null) $max = $wp->getMaxPlayers($lv->getName());
+	  $max = NULL;
+	  if ($this->wp !== null) $max = $this->wp->getMaxPlayers($lv->getName());
 	  if ($max == null)
 	    $upd = $t. TextFormat::BLUE . $cnt;
 	  else
